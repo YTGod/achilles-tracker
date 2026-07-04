@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>跟腱日誌</title>
+<style>
+  /* ===== API_URL：部署完 Apps Script 後，把下面這行換成你的網頁應用程式網址 ===== */
+  /* 範例： const API_URL = "https://script.google.com/macros/s/AKfycbz1beY3x4XeQH865_19fMeymShu-xCdfeI4QSy57u2gF_MfjmnZitz1XGUEULjWGRJc/exec"; */
+  :root{
+    --bg:#0e1116;
+    --panel:#161b22;
+    --panel2:#1c2330;
+    --border:#262d3a;
+    --text:#e6e9ef;
+    --text-dim:#8b93a3;
+    --accent:#c8f04a;
+    --warn:#ffb547;
+    --danger:#ff5d5d;
+    --blue:#4ea1ff;
+    --green:#3ddc84;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif;
+    max-width:100vw;overflow-x:hidden;}
+  body{padding-bottom:96px;}
+  #testBanner{background:var(--warn);color:#20240a;font-size:12px;font-weight:700;text-align:center;
+    padding:4px 8px;display:none;}
+  header{padding:14px 16px 10px;position:sticky;top:0;background:var(--bg);z-index:5;
+    border-bottom:1px solid var(--border);}
+  h1{font-size:18px;margin:0 0 10px;font-weight:700;letter-spacing:.5px;}
+  .datebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .datebar .big-date{font-size:22px;font-weight:700;color:var(--accent);}
+  select#dateSelect{background:var(--panel2);color:var(--text);border:1px solid var(--border);
+    border-radius:10px;padding:10px 12px;font-size:15px;min-height:44px;flex:1;min-width:160px;}
+  main{padding:12px 16px;}
+  section{margin-bottom:18px;}
+  .field{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;}
+  .field .flabel{font-size:14px;color:var(--text-dim);margin-bottom:8px;font-weight:600;}
+  .btn-row{display:flex;flex-wrap:wrap;gap:8px;}
+  .btn{min-height:44px;min-width:44px;flex:1 1 auto;background:var(--panel2);color:var(--text);
+    border:1.5px solid var(--border);border-radius:10px;padding:10px 8px;font-size:13.5px;
+    text-align:center;cursor:pointer;user-select:none;transition:all .12s;line-height:1.3;}
+  .btn:active{transform:scale(.96);}
+  .btn.selected{background:var(--accent);color:#1a2005;border-color:var(--accent);font-weight:700;}
+  h2.sec-title{font-size:15px;color:var(--text-dim);margin:0 0 10px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.5px;}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px;}
+  .card .ctitle{font-size:12px;color:var(--text-dim);margin-bottom:6px;}
+  .card .cval{font-size:19px;font-weight:700;}
+  .card .carrow{font-size:13px;margin-left:4px;}
+  .arrow-up{color:var(--danger);}
+  .arrow-down{color:var(--green);}
+  .arrow-flat{color:var(--text-dim);}
+  .rule-msg{border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.55;
+    border-left:5px solid var(--text-dim);background:var(--panel);}
+  .rule-msg.danger{border-color:var(--danger);background:#2a1414;}
+  .rule-msg.warn{border-color:var(--warn);background:#2a2110;}
+  .rule-msg.good{border-color:var(--accent);background:#182812;}
+  .rule-msg.info{border-color:var(--blue);background:#12202b;}
+  .rule-msg .rtag{font-size:11px;font-weight:700;opacity:.7;display:block;margin-bottom:4px;letter-spacing:1px;}
+  .no-rule{color:var(--text-dim);font-size:13px;padding:6px 2px;}
+  .gauge3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .gcell{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px 8px;text-align:center;}
+  .gcell .glabel{font-size:11.5px;color:var(--text-dim);margin-bottom:6px;min-height:30px;}
+  .gcell .gval{font-size:20px;font-weight:700;color:var(--accent);}
+  .chart-box{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:10px;margin-bottom:12px;}
+  .chart-box .ctitle2{font-size:13.5px;font-weight:700;margin-bottom:6px;padding-left:2px;}
+  .chart-box svg{width:100%;height:auto;display:block;}
+  footer#saveBar{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--border);
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:12px;z-index:10;}
+  #saveBtn{flex:1;min-height:48px;border-radius:12px;border:none;background:var(--accent);color:#1a2005;
+    font-size:16px;font-weight:700;cursor:pointer;}
+  #saveBtn:disabled{background:#3a4150;color:#767e8f;cursor:not-allowed;}
+  #saveStatus{font-size:13px;min-width:90px;text-align:right;color:var(--text-dim);}
+  #saveStatus.ok{color:var(--accent);}
+  #saveStatus.err{color:var(--danger);}
+  #retryBtn{display:none;background:var(--danger);color:#2a0a0a;border:none;border-radius:8px;
+    padding:8px 10px;font-size:12px;font-weight:700;min-height:44px;}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--text-dim);margin-bottom:4px;padding-left:2px;flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+</style>
+</head>
+<body>
+<div id="testBanner"></div>
+<header>
+  <h1>跟腱日誌</h1>
+  <div class="datebar">
+    <div class="big-date" id="bigDate">--</div>
+    <select id="dateSelect" aria-label="選擇日期"></select>
+  </div>
+</header>
+
+<main>
+  <section id="fields"></section>
+
+  <section id="analysisSection">
+    <h2 class="sec-title">趨勢分析</h2>
+    <div class="cards" id="cmpCards"></div>
+    <div id="ruleMsgs" style="margin-top:10px;"></div>
+  </section>
+
+  <section id="gaugeSection">
+    <h2 class="sec-title">M3 解鎖進度</h2>
+    <div class="gauge3" id="gaugeCells"></div>
+  </section>
+
+  <section id="chartsSection">
+    <h2 class="sec-title">圖表</h2>
+    <div class="chart-box"><div class="ctitle2">晨僵趨勢</div><div id="chartStiff"></div></div>
+    <div class="chart-box">
+      <div class="ctitle2">止點壓痛（左右）</div>
+      <div class="legend"><span><i class="dot" style="background:#4ea1ff"></i>左</span><span><i class="dot" style="background:#3ddc84"></i>右</span></div>
+      <div id="chartPain"></div>
+    </div>
+    <div class="chart-box">
+      <div class="ctitle2">訓練負荷 + 次日晨僵</div>
+      <div class="legend"><span><i class="dot" style="background:#c8f04a"></i>負荷(長條)</span><span><i class="dot" style="background:#ff5d5d"></i>次日晨僵(折線)</span></div>
+      <div id="chartLoad"></div>
+    </div>
+    <div class="chart-box"><div class="ctitle2">運動後止點熱感</div><div id="chartHeat"></div></div>
+  </section>
+</main>
+
+<footer id="saveBar">
+  <span id="saveStatus"></span>
+  <button id="retryBtn">重試</button>
+  <button id="saveBtn" disabled>儲存</button>
+</footer>
+
+<script>
+/* ============================================================
+ * API_URL — 部署完 Apps Script 後，把下面網址換成你的 Web App URL
+ * ============================================================ */
+const API_URL = "PLACEHOLDER_REPLACE_WITH_YOUR_WEBAPP_URL"; // <-- 貼上 https://script.google.com/macros/s/xxxx/exec
+
+/* ============================================================
+ * 內建歷史種子資料（同時也用於離線測試模式 ?mock=1）
+ * ============================================================ */
+const SEED_33 = [
+{"date":"2026-05-14","stiff":0,"painL":1,"painR":1,"walk":1,"load":3,"heat":2,"mood":1},
+{"date":"2026-05-15","stiff":2,"painL":3,"painR":3,"walk":2,"load":2,"heat":1,"mood":1},
+{"date":"2026-05-16","stiff":2,"painL":1,"painR":1,"walk":1,"load":1,"heat":1,"mood":1},
+{"date":"2026-05-17","stiff":1,"painL":1,"painR":1,"walk":1,"load":2,"heat":0,"mood":1},
+{"date":"2026-05-18","stiff":2,"painL":2,"painR":2,"walk":2,"load":2,"heat":1,"mood":1},
+{"date":"2026-05-19","stiff":3,"painL":2,"painR":2,"walk":2,"load":2,"heat":1,"mood":1},
+{"date":"2026-05-20","stiff":2,"painL":1,"painR":1,"walk":1,"load":2,"heat":1,"mood":1},
+{"date":"2026-05-21","stiff":2,"painL":1,"painR":1,"walk":1,"load":2,"heat":1,"mood":1},
+{"date":"2026-05-22","stiff":2,"painL":1,"painR":1,"walk":1,"load":2,"heat":1,"mood":1},
+{"date":"2026-05-23","stiff":1,"painL":0,"painR":0,"walk":0,"load":1,"heat":0,"mood":1},
+{"date":"2026-05-24","stiff":1,"painL":0,"painR":0,"walk":0,"load":1,"heat":0,"mood":1},
+{"date":"2026-05-25","stiff":1,"painL":0,"painR":0,"walk":0,"load":3,"heat":1,"mood":1},
+{"date":"2026-05-26","stiff":1,"painL":0,"painR":0,"walk":0,"load":2,"heat":1,"mood":1},
+{"date":"2026-05-27","stiff":1,"painL":1,"painR":1,"walk":1,"load":2,"heat":1,"mood":1},
+{"date":"2026-05-28","stiff":1,"painL":1,"painR":1,"walk":1,"load":2,"heat":1,"mood":1},
+{"date":"2026-05-29","stiff":1,"painL":1,"painR":1,"walk":1,"load":2,"heat":1,"mood":1},
+{"date":"2026-05-30","stiff":1,"painL":0,"painR":0,"walk":0,"load":2,"heat":1,"mood":1},
+{"date":"2026-05-31","stiff":1,"painL":0,"painR":0,"walk":0,"load":2,"heat":0,"mood":1},
+{"date":"2026-06-01","stiff":1,"painL":0,"painR":0,"walk":0,"load":2,"heat":0,"mood":1},
+{"date":"2026-06-02","stiff":1,"painL":0,"painR":0,"walk":0,"load":3,"heat":0,"mood":1},
+{"date":"2026-06-03","stiff":1,"painL":0,"painR":0,"walk":0,"load":2,"heat":0,"mood":1},
+{"date":"2026-06-04","stiff":1,"painL":0,"painR":0,"walk":0,"load":2,"heat":0,"mood":1},
+{"date":"2026-06-05","stiff":1,"painL":0,"painR":0,"walk":0,"load":3,"heat":0,"mood":1},
+{"date":"2026-06-06","stiff":1,"painL":0,"painR":0,"walk":0,"load":2,"heat":0,"mood":1},
+{"date":"2026-06-07","stiff":1,"painL":0,"painR":0,"walk":0,"load":1,"heat":0,"mood":1},
+{"date":"2026-06-08","stiff":1,"painL":0,"painR":0,"walk":0,"load":3,"heat":0,"mood":1},
+{"date":"2026-06-09","stiff":2,"painL":0,"painR":0,"walk":0,"load":3,"heat":1,"mood":1},
+{"date":"2026-06-10","stiff":2,"painL":2,"painR":2,"walk":1,"load":1,"heat":1,"mood":1},
+{"date":"2026-06-11","stiff":2,"painL":1,"painR":1,"walk":1,"load":1,"heat":1,"mood":1},
+{"date":"2026-06-12","stiff":2,"painL":1,"painR":1,"walk":1,"load":2,"heat":1,"mood":1},
+{"date":"2026-06-13","stiff":2,"painL":2,"painR":2,"walk":2,"load":3,"heat":2,"mood":1},
+{"date":"2026-06-14","stiff":3,"painL":1,"painR":1,"walk":1,"load":1,"heat":1,"mood":1},
+{"date":"2026-06-17","stiff":2,"painL":1,"painR":1,"walk":1,"load":1,"heat":1,"mood":1}
+];
+
+/* 規則引擎測試用資料集（僅在 ?data=ruleX 時使用，不影響正式流程） */
+const TEST_DATASETS = {
+  ruleA: [{"date":"2026-06-20","stiff":3,"painL":1,"painR":1,"walk":1,"load":1,"heat":0,"mood":1}],
+  ruleB: [
+    {"date":"2026-06-18","stiff":0,"painL":0,"painR":0,"walk":0,"load":1,"heat":0,"mood":1},
+    {"date":"2026-06-19","stiff":1,"painL":0,"painR":0,"walk":0,"load":1,"heat":0,"mood":1},
+    {"date":"2026-06-20","stiff":2,"painL":0,"painR":0,"walk":0,"load":1,"heat":0,"mood":1}
+  ],
+  ruleC: [
+    {"date":"2026-06-19","stiff":1,"painL":0,"painR":0,"walk":0,"load":3,"heat":1,"mood":1},
+    {"date":"2026-06-20","stiff":2,"painL":0,"painR":0,"walk":0,"load":1,"heat":0,"mood":1}
+  ],
+  ruleD: [
+    {"date":"2026-06-14","stiff":1,"painL":0,"painR":0,"walk":0,"load":2,"heat":1,"mood":2},
+    {"date":"2026-06-15","stiff":1,"painL":0,"painR":0,"walk":0,"load":2,"heat":1,"mood":2},
+    {"date":"2026-06-16","stiff":1,"painL":0,"painR":0,"walk":0,"load":1,"heat":0,"mood":2},
+    {"date":"2026-06-17","stiff":1,"painL":0,"painR":0,"walk":0,"load":2,"heat":1,"mood":2},
+    {"date":"2026-06-18","stiff":1,"painL":0,"painR":0,"walk":0,"load":2,"heat":1,"mood":2},
+    {"date":"2026-06-19","stiff":1,"painL":0,"painR":0,"walk":0,"load":3,"heat":2,"mood":2},
+    {"date":"2026-06-20","stiff":1,"painL":0,"painR":0,"walk":0,"load":2,"heat":1,"mood":3}
+  ],
+  ruleE: [
+    {"date":"2026-06-18","stiff":1,"painL":0,"painR":0,"walk":0,"load":1,"heat":2,"mood":1},
+    {"date":"2026-06-19","stiff":1,"painL":0,"painR":0,"walk":0,"load":1,"heat":1,"mood":1},
+    {"date":"2026-06-20","stiff":1,"painL":0,"painR":0,"walk":0,"load":1,"heat":0,"mood":1}
+  ],
+  ruleF: [
+    {"date":"2026-06-16","stiff":0,"painL":0,"painR":0.5,"walk":0,"load":1,"heat":0,"mood":2},
+    {"date":"2026-06-17","stiff":0,"painL":0,"painR":0.5,"walk":0,"load":1,"heat":0,"mood":2},
+    {"date":"2026-06-18","stiff":0,"painL":0,"painR":0,"walk":0,"load":1,"heat":0,"mood":2},
+    {"date":"2026-06-19","stiff":0,"painL":0,"painR":0,"walk":0,"load":1,"heat":0,"mood":2},
+    {"date":"2026-06-20","stiff":0,"painL":0,"painR":0,"walk":0,"load":1,"heat":0,"mood":2}
+  ],
+  ruleG: [
+    {"date":"2026-06-06","stiff":1,"painL":2,"painR":2,"walk":1,"load":1,"heat":1,"mood":1},
+    {"date":"2026-06-07","stiff":1,"painL":2,"painR":2,"walk":1,"load":1,"heat":1,"mood":1},
+    {"date":"2026-06-08","stiff":1,"painL":2,"painR":2,"walk":1,"load":1,"heat":1,"mood":1},
+    {"date":"2026-06-09","stiff":1,"painL":2,"painR":2,"walk":1,"load":1,"heat":1,"mood":1},
+    {"date":"2026-06-10","stiff":1,"painL":2,"painR":2,"walk":1,"load":1,"heat":1,"mood":1},
+    {"date":"2026-06-11","stiff":1,"painL":2,"painR":2,"walk":1,"load":1,"heat":1,"mood":1},
+    {"date":"2026-06-12","stiff":1,"painL":2,"painR":2,"walk":1,"load":1,"heat":1,"mood":1},
+    {"date":"2026-06-13","stiff":1,"painL":1,"painR":1,"walk":0,"load":1,"heat":0,"mood":1},
+    {"date":"2026-06-14","stiff":1,"painL":1,"painR":1,"walk":0,"load":1,"heat":0,"mood":1},
+    {"date":"2026-06-15","stiff":1,"painL":1,"painR":1,"walk":0,"load":1,"heat":0,"mood":1},
+    {"date":"2026-06-16","stiff":1,"painL":1,"painR":1,"walk":0,"load":1,"heat":0,"mood":1},
+    {"date":"2026-06-17","stiff":1,"painL":1,"painR":1,"walk":0,"load":1,"heat":0,"mood":1},
+    {"date":"2026-06-18","stiff":1,"painL":1,"painR":1,"walk":0,"load":1,"heat":0,"mood":1},
+    {"date":"2026-06-19","stiff":1,"painL":1,"painR":1,"walk":0,"load":1,"heat":0,"mood":1}
+  ]
+};
+const TEST_ASOF = { ruleA:"2026-06-20", ruleB:"2026-06-20", ruleC:"2026-06-20", ruleD:"2026-06-20",
+  ruleE:"2026-06-20", ruleF:"2026-06-20", ruleG:"2026-06-19" };
+
+/* ============================================================
+ * PURE-START  （純函式，無 DOM 依賴，可被 Node 直接抽出測試）
+ * ============================================================ */
+function pad2(n){return String(n).padStart(2,'0');}
+function toDateStr(d){return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
+function parseDateStr(s){var p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
+function addDays(dateStr,n){var d=parseDateStr(dateStr);d.setDate(d.getDate()+n);return toDateStr(d);}
+function diffDays(a,b){return Math.round((parseDateStr(b)-parseDateStr(a))/86400000);}
+function getRealTodayStr(){return toDateStr(new Date());}
+
+function buildPast60Days(todayStr){
+  var arr=[];
+  for(var i=0;i<60;i++){arr.push(addDays(todayStr,-i));}
+  return arr;
+}
+function findRecord(records,dateStr){
+  for(var i=0;i<records.length;i++){ if(records[i].date===dateStr) return records[i]; }
+  return null;
+}
+function latestRecord(records){
+  if(!records.length) return null;
+  var sorted=records.slice().sort(function(a,b){return a.date<b.date?1:(a.date>b.date?-1:0);});
+  return sorted[0];
+}
+function upsertLocal(records,rec){
+  var idx=-1;
+  for(var i=0;i<records.length;i++){ if(records[i].date===rec.date){idx=i;break;} }
+  var copy=records.slice();
+  if(idx>=0) copy[idx]=rec; else copy.push(rec);
+  copy.sort(function(a,b){return a.date<b.date?-1:(a.date>b.date?1:0);});
+  return copy;
+}
+function painMax(r){ return Math.max(r.painL||0, r.painR||0); }
+function windowRecords(records,endDateStr,windowDays,offsetDays){
+  var start=addDays(endDateStr,-(offsetDays+windowDays-1));
+  var end=addDays(endDateStr,-offsetDays);
+  return records.filter(function(r){ return r.date>=start && r.date<=end; });
+}
+function avg(arr){ return arr.length? arr.reduce(function(a,b){return a+b;},0)/arr.length : null; }
+function computeWindowStats(records,endDateStr,windowDays,offsetDays){
+  var recs=windowRecords(records,endDateStr,windowDays,offsetDays);
+  return {
+    count:recs.length,
+    avgStiff:avg(recs.map(function(r){return r.stiff;})),
+    avgPain:avg(recs.map(painMax)),
+    loadTotal:recs.reduce(function(s,r){return s+(r.load||0);},0)
+  };
+}
+function pctChange(curr,prev){
+  if(prev===null||prev===0||curr===null) return null;
+  return (curr-prev)/prev*100;
+}
+function trendArrowClass(pct){
+  if(pct===null) return 'flat';
+  if(pct>5) return 'up';
+  if(pct<-5) return 'down';
+  return 'flat';
+}
+function computeComparison(records,todayStr){
+  var w7=computeWindowStats(records,todayStr,7,0);
+  var w7prev=computeWindowStats(records,todayStr,7,7);
+  var w30=computeWindowStats(records,todayStr,30,0);
+  var w30prev=computeWindowStats(records,todayStr,30,30);
+  return {
+    w7:w7,w7prev:w7prev,w30:w30,w30prev:w30prev,
+    stiff7pct:pctChange(w7.avgStiff,w7prev.avgStiff),
+    pain7pct:pctChange(w7.avgPain,w7prev.avgPain),
+    load7pct:pctChange(w7.loadTotal,w7prev.loadTotal),
+    stiff30pct:pctChange(w30.avgStiff,w30prev.avgStiff),
+    pain30pct:pctChange(w30.avgPain,w30prev.avgPain),
+    load30pct:pctChange(w30.loadTotal,w30prev.loadTotal)
+  };
+}
+function computeStreak(records,endDateStr,predicate){
+  var count=0, cursor=endDateStr;
+  while(true){
+    var rec=findRecord(records,cursor);
+    if(rec && predicate(rec)){ count++; cursor=addDays(cursor,-1); } else break;
+  }
+  return count;
+}
+function computeRules(records,todayStr){
+  var messages=[];
+  var today=findRecord(records,todayStr);
+  var yesterday=findRecord(records,addDays(todayStr,-1));
+  if(today){
+    if(today.stiff>=3 || painMax(today)>=3 || today.walk===2){
+      messages.push({rule:'a',level:'danger',text:'今日禁跳躍禁變向，只做分腿蹲等長：晨僵、壓痛或走路症狀達到警戒值，代表止點界面仍在發炎，向心收縮與變向剪力會直接撕裂界面。'});
+    }
+  }
+  (function(){
+    var d0=todayStr,d1=addDays(todayStr,-1),d2=addDays(todayStr,-2);
+    var r0=findRecord(records,d0),r1=findRecord(records,d1),r2=findRecord(records,d2);
+    if(r0&&r1&&r2 && r2.stiff<r1.stiff && r1.stiff<r0.stiff){
+      messages.push({rule:'b',level:'warn',text:'累積過載趨勢，建議連兩天降載：晨僵連續3天上升代表修復速度追不上破壞速度，及早降載避免進入下一輪發炎循環。'});
+    }
+  })();
+  if(today && yesterday && yesterday.load===3 && today.stiff>yesterday.stiff){
+    messages.push({rule:'c',level:'warn',text:'過載確認，今日主動降一級：昨天高強度訓練後晨僵上升，是負荷超過組織當下修復能力的直接訊號。'});
+  }
+  if(today){
+    var w7=windowRecords(records,todayStr,7,0);
+    var highLoadDays=w7.filter(function(r){return r.load>=2;}).length;
+    if(highLoadDays>=5 && today.mood>=2){
+      messages.push({rule:'d',level:'warn',text:'衝動控制提醒：狀態好+連續訓練正是你的復發模式，把好的感覺存起來，用在下一個安全的訓練窗口。'});
+    }
+  }
+  if(today){
+    if(today.heat===2){
+      messages.push({rule:'e',level:'info',text:'今晚冰敷10-12分：摸起來明顯熱代表急性發炎反應活躍，短時間冰敷能抑制滲出而不影響整體修復。'});
+    } else if(today.heat===1){
+      messages.push({rule:'e',level:'info',text:'40度泡腳+ankle pump：微溫是正常訓練後反應，泡腳促進循環、ankle pump維持關節液流動。'});
+    } else if(today.heat===0 && today.load>=1){
+      messages.push({rule:'e',level:'info',text:'泡腳取代冰敷：無熱感代表沒有急性發炎，此時冰敷反而抑制正常修復，改用泡腳。'});
+    }
+  }
+  (function(){
+    var stiffStreak=computeStreak(records,todayStr,function(r){return r.stiff===0;});
+    var painStreak=computeStreak(records,todayStr,function(r){return painMax(r)<2;});
+    if(stiffStreak>=5 && painStreak>=3){
+      messages.push({rule:'f',level:'good',text:'接近M3解鎖，可預約超音波：晨僵連續歸零與壓痛穩定達標，代表神經敏感化與局部發炎都在可控範圍，是取得影像基準的好時機。'});
+    }
+  })();
+  (function(){
+    var cmp=computeComparison(records,todayStr);
+    if(cmp.pain7pct!==null && cmp.pain7pct<=-30){
+      messages.push({rule:'g',level:'good',text:'近7天平均壓痛較前7天下降超過30%：組織界面修復速度正在超前破壞速度，維持目前的負荷策略。'});
+    }
+  })();
+  return messages;
+}
+function computeGauge(records,todayStr){
+  return {
+    stiffZeroStreak:computeStreak(records,todayStr,function(r){return r.stiff===0;}),
+    stiffZeroTarget:5,
+    painLowStreak:computeStreak(records,todayStr,function(r){return painMax(r)<2;}),
+    painLowTarget:3,
+    ultrasound:'?'
+  };
+}
+function buildXScale(records,width,padL,padR){
+  if(!records.length) return {minStr:null,maxStr:null,x:function(){return padL;}};
+  var dates=records.map(function(r){return r.date;}).slice().sort();
+  var minD=parseDateStr(dates[0]), maxD=parseDateStr(dates[dates.length-1]);
+  var span=Math.max(1,(maxD-minD)/86400000);
+  var innerW=width-padL-padR;
+  return {
+    minStr:dates[0], maxStr:dates[dates.length-1],
+    x:function(dateStr){ var d=parseDateStr(dateStr); return padL + ((d-minD)/86400000)/span*innerW; }
+  };
+}
+function buildLineSegments(records,key){
+  var sorted=records.filter(function(r){return r[key]!==undefined && r[key]!==null;})
+    .slice().sort(function(a,b){return a.date<b.date?-1:(a.date>b.date?1:0);});
+  var segments=[], current=[];
+  for(var i=0;i<sorted.length;i++){
+    if(i>0 && diffDays(sorted[i-1].date,sorted[i].date)>1){
+      if(current.length) segments.push(current);
+      current=[];
+    }
+    current.push(sorted[i]);
+  }
+  if(current.length) segments.push(current);
+  return segments;
+}
+/* ============================================================
+ * PURE-END
+ * ============================================================ */
+</script>
+<script>
+/* ============================================================
+ * SVG 圖表建構（字串產生，不依賴外部函式庫）
+ * ============================================================ */
+var CHART_W = 340, CHART_H = 170;
+var PAD_L = 34, PAD_R = 10, PAD_T = 14, PAD_B = 22;
+
+function svgEsc(s){ return String(s); }
+
+function axisSkeleton(yMax, yLabel, xScale, yTicks){
+  var innerW = CHART_W-PAD_L-PAD_R, innerH = CHART_H-PAD_T-PAD_B;
+  var parts = [];
+  // gridlines + y labels
+  yTicks.forEach(function(t){
+    var y = PAD_T + innerH - (t/yMax)*innerH;
+    parts.push('<line x1="'+PAD_L+'" y1="'+y+'" x2="'+(CHART_W-PAD_R)+'" y2="'+y+'" stroke="#262d3a" stroke-width="1"/>');
+    parts.push('<text x="'+(PAD_L-6)+'" y="'+(y+3)+'" font-size="9" fill="#8b93a3" text-anchor="end">'+t+'</text>');
+  });
+  // y axis unit label (rotated)
+  parts.push('<text x="10" y="'+(PAD_T+8)+'" font-size="9" fill="#c8f04a" text-anchor="start">'+svgEsc(yLabel)+'</text>');
+  // x axis line
+  parts.push('<line x1="'+PAD_L+'" y1="'+(CHART_H-PAD_B)+'" x2="'+(CHART_W-PAD_R)+'" y2="'+(CHART_H-PAD_B)+'" stroke="#262d3a" stroke-width="1"/>');
+  // x labels: min and max date, plus a mid tick
+  if(xScale.minStr){
+    parts.push('<text x="'+PAD_L+'" y="'+(CHART_H-6)+'" font-size="9" fill="#8b93a3" text-anchor="start">'+xScale.minStr.slice(5)+'</text>');
+    parts.push('<text x="'+(CHART_W-PAD_R)+'" y="'+(CHART_H-6)+'" font-size="9" fill="#8b93a3" text-anchor="end">'+xScale.maxStr.slice(5)+'</text>');
+  }
+  return parts.join('');
+}
+
+function polylineFromSegments(records, key, xScale, yMax, color, dotRadius){
+  var innerH = CHART_H-PAD_T-PAD_B;
+  function yOf(v){ return PAD_T + innerH - (v/yMax)*innerH; }
+  var segs = buildLineSegments(records, key);
+  var out = [];
+  segs.forEach(function(seg){
+    var pts = seg.map(function(r){ return xScale.x(r.date).toFixed(1)+','+yOf(r[key]).toFixed(1); }).join(' ');
+    if(seg.length>1){
+      out.push('<polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2.2"/>');
+    }
+    seg.forEach(function(r){
+      out.push('<circle cx="'+xScale.x(r.date).toFixed(1)+'" cy="'+yOf(r[key]).toFixed(1)+'" r="'+(dotRadius||2.6)+'" fill="'+color+'"/>');
+    });
+  });
+  return out.join('');
+}
+
+function renderStiffChart(records){
+  var xScale = buildXScale(records, CHART_W, PAD_L, PAD_R);
+  var svg = '<svg viewBox="0 0 '+CHART_W+' '+CHART_H+'" xmlns="http://www.w3.org/2000/svg">';
+  svg += axisSkeleton(3, '等級(0-3)', xScale, [0,1,2,3]);
+  svg += polylineFromSegments(records, 'stiff', xScale, 3, '#c8f04a', 2.6);
+  svg += '</svg>';
+  return svg;
+}
+function renderPainChart(records){
+  var xScale = buildXScale(records, CHART_W, PAD_L, PAD_R);
+  var svg = '<svg viewBox="0 0 '+CHART_W+' '+CHART_H+'" xmlns="http://www.w3.org/2000/svg">';
+  svg += axisSkeleton(3, '壓痛等級(0-3)', xScale, [0,0.5,1,2,3]);
+  svg += polylineFromSegments(records, 'painL', xScale, 3, '#4ea1ff', 2.6);
+  svg += polylineFromSegments(records, 'painR', xScale, 3, '#3ddc84', 2.2);
+  svg += '</svg>';
+  return svg;
+}
+function renderLoadChart(records){
+  var xScale = buildXScale(records, CHART_W, PAD_L, PAD_R);
+  var innerH = CHART_H-PAD_T-PAD_B, yMax=3;
+  function yOf(v){ return PAD_T + innerH - (v/yMax)*innerH; }
+  var svg = '<svg viewBox="0 0 '+CHART_W+' '+CHART_H+'" xmlns="http://www.w3.org/2000/svg">';
+  svg += axisSkeleton(3, '負荷等級(0-3)', xScale, [0,1,2,3]);
+  var sorted = records.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+  var barW = 5;
+  sorted.forEach(function(r){
+    if(r.load===undefined||r.load===null) return;
+    var cx = xScale.x(r.date);
+    var y = yOf(r.load);
+    svg += '<rect x="'+(cx-barW/2).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+barW+'" height="'+(CHART_H-PAD_B-y).toFixed(1)+'" fill="#c8f04a" opacity="0.55"/>';
+  });
+  // 次日晨僵折線：對每筆記錄找次日 stiff（若存在且date差1天）
+  var nextDayPts = [];
+  sorted.forEach(function(r){
+    var nxt = findRecord(records, addDays(r.date,1));
+    if(nxt && nxt.stiff!==undefined){
+      nextDayPts.push({date:r.date, stiff:nxt.stiff});
+    }
+  });
+  svg += polylineFromSegments(nextDayPts, 'stiff', xScale, 3, '#ff5d5d', 2.2);
+  svg += '</svg>';
+  return svg;
+}
+function renderHeatChart(records){
+  var xScale = buildXScale(records, CHART_W, PAD_L, PAD_R);
+  var innerH = CHART_H-PAD_T-PAD_B, yMax=2;
+  function yOf(v){ return PAD_T + innerH - (v/yMax)*innerH; }
+  var svg = '<svg viewBox="0 0 '+CHART_W+' '+CHART_H+'" xmlns="http://www.w3.org/2000/svg">';
+  svg += axisSkeleton(2, '熱感(0-2)', xScale, [0,1,2]);
+  records.forEach(function(r){
+    if(r.heat===undefined||r.heat===null) return;
+    var cx=xScale.x(r.date), cy=yOf(r.heat);
+    var color = r.heat===2 ? '#ff5d5d' : '#4ea1ff';
+    var rad = r.heat===2 ? 4.2 : 3;
+    svg += '<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+rad+'" fill="'+color+'"'+(r.heat===2?' stroke="#ffb547" stroke-width="1.2"':'')+'/>';
+  });
+  svg += '</svg>';
+  return svg;
+}
+
+/* ============================================================
+ * DOM / 應用邏輯
+ * ============================================================ */
+var FIELD_DEFS = [
+  {key:'stiff', label:'晨僵時間', options:[{v:0,l:'0（歸零）'},{v:1,l:'<1分'},{v:2,l:'1-3分'},{v:3,l:'>3分'}]},
+  {key:'painL', label:'止點壓痛（左）', options:[{v:0,l:'0（無）'},{v:0.5,l:'>0且≤0.5'},{v:1,l:'0.5-1'},{v:2,l:'1-2'},{v:3,l:'>2'}]},
+  {key:'painR', label:'止點壓痛（右）', options:[{v:0,l:'0（無）'},{v:0.5,l:'>0且≤0.5'},{v:1,l:'0.5-1'},{v:2,l:'1-2'},{v:3,l:'>2'}]},
+  {key:'walk', label:'走路症狀', options:[{v:0,l:'無'},{v:1,l:'輕微'},{v:2,l:'明顯'}]},
+  {key:'load', label:'今日訓練', options:[{v:0,l:'否'},{v:1,l:'輕量'},{v:2,l:'正常'},{v:3,l:'高強度'}]},
+  {key:'heat', label:'運動後止點熱感', options:[{v:0,l:'無'},{v:1,l:'微溫'},{v:2,l:'明顯熱'}]},
+  {key:'mood', label:'主觀狀態', options:[{v:0,l:'差'},{v:1,l:'普通'},{v:2,l:'好'},{v:3,l:'很好'}]}
+];
+var REQUIRED_KEYS = ['stiff','painL','painR','walk','load','heat','mood'];
+
+var state = {
+  records: [],
+  selectedDate: null,
+  todayStr: null,
+  form: {},
+  mockMode: false
+};
+
+function qs(name){
+  var m = new URLSearchParams(location.search);
+  return m.get(name);
+}
+
+function initTestMode(){
+  var mockParam = qs('mock');
+  var dataParam = qs('data');
+  var asOfParam = qs('asOf');
+  if(mockParam==='1' && !dataParam){
+    state.mockMode = true;
+    state.records = SEED_33.slice();
+  } else if(dataParam && TEST_DATASETS[dataParam]){
+    state.mockMode = true;
+    state.records = TEST_DATASETS[dataParam].slice();
+    if(!asOfParam) asOfParam = TEST_ASOF[dataParam];
+  }
+  state.todayStr = asOfParam || getRealTodayStr();
+  if(state.mockMode){
+    var banner = document.getElementById('testBanner');
+    banner.style.display='block';
+    banner.textContent = '測試模式 data='+(dataParam||'seed33')+' asOf='+state.todayStr+'（不會連線 Apps Script）';
+  }
+}
+
+function renderFields(){
+  var wrap = document.getElementById('fields');
+  wrap.innerHTML = '';
+  FIELD_DEFS.forEach(function(fd){
+    var div = document.createElement('div');
+    div.className='field';
+    var lab = document.createElement('div');
+    lab.className='flabel'; lab.textContent = fd.label;
+    div.appendChild(lab);
+    var row = document.createElement('div');
+    row.className='btn-row';
+    fd.options.forEach(function(opt){
+      var b = document.createElement('div');
+      b.className='btn';
+      b.textContent = opt.l;
+      b.dataset.key = fd.key;
+      b.dataset.val = opt.v;
+      if(state.form[fd.key]===opt.v) b.classList.add('selected');
+      b.addEventListener('click', function(){
+        state.form[fd.key] = opt.v;
+        renderFields();
+        updateSaveState();
+      });
+      row.appendChild(b);
+    });
+    div.appendChild(row);
+    wrap.appendChild(div);
+  });
+}
+
+function updateSaveState(){
+  var ok = REQUIRED_KEYS.every(function(k){ return state.form[k]!==undefined && state.form[k]!==null; });
+  document.getElementById('saveBtn').disabled = !ok;
+}
+
+function populateDateSelect(){
+  var sel = document.getElementById('dateSelect');
+  sel.innerHTML='';
+  var days = buildPast60Days(state.todayStr);
+  days.forEach(function(d){
+    var opt = document.createElement('option');
+    opt.value = d;
+    var hasRec = !!findRecord(state.records, d);
+    opt.textContent = d + (d===state.todayStr?'（今天）':'') + (hasRec?' ●已記錄':'');
+    if(d===state.selectedDate) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.onchange = function(){ loadDate(sel.value); };
+}
+
+function loadDate(dateStr){
+  state.selectedDate = dateStr;
+  document.getElementById('bigDate').textContent = dateStr;
+  var existing = findRecord(state.records, dateStr);
+  var latest = latestRecord(state.records);
+  if(existing){
+    state.form = {stiff:existing.stiff, painL:existing.painL, painR:existing.painR,
+      walk:existing.walk, load:existing.load, heat:existing.heat, mood:existing.mood};
+  } else {
+    state.form = {};
+    if(latest){
+      state.form.stiff = latest.stiff;
+      state.form.painL = latest.painL;
+      state.form.painR = latest.painR;
+    }
+  }
+  renderFields();
+  updateSaveState();
+  populateDateSelect();
+  renderAnalysis();
+  renderGauge();
+  renderCharts();
+  var status = document.getElementById('saveStatus');
+  status.textContent=''; status.className='';
+}
+
+function renderAnalysis(){
+  var cmp = computeComparison(state.records, state.todayStr);
+  var cardsWrap = document.getElementById('cmpCards');
+  function fmtPct(p){ return p===null? '--' : (p>0?'+':'')+p.toFixed(0)+'%'; }
+  function arrowHtml(p){
+    var cls = trendArrowClass(p);
+    var sym = cls==='up'?'↑':(cls==='down'?'↓':'→');
+    return '<span class="carrow arrow-'+cls+'">'+sym+' '+fmtPct(p)+'</span>';
+  }
+  cardsWrap.innerHTML =
+    '<div class="card"><div class="ctitle">近7天 平均晨僵</div><div class="cval">'+(cmp.w7.avgStiff===null?'--':cmp.w7.avgStiff.toFixed(2))+arrowHtml(cmp.stiff7pct)+'</div></div>'+
+    '<div class="card"><div class="ctitle">近7天 平均壓痛(較大側)</div><div class="cval">'+(cmp.w7.avgPain===null?'--':cmp.w7.avgPain.toFixed(2))+arrowHtml(cmp.pain7pct)+'</div></div>'+
+    '<div class="card"><div class="ctitle">近7天 訓練負荷總量</div><div class="cval">'+cmp.w7.loadTotal+arrowHtml(cmp.load7pct)+'</div></div>'+
+    '<div class="card"><div class="ctitle">近30天 平均晨僵</div><div class="cval">'+(cmp.w30.avgStiff===null?'--':cmp.w30.avgStiff.toFixed(2))+arrowHtml(cmp.stiff30pct)+'</div></div>'+
+    '<div class="card"><div class="ctitle">近30天 平均壓痛(較大側)</div><div class="cval">'+(cmp.w30.avgPain===null?'--':cmp.w30.avgPain.toFixed(2))+arrowHtml(cmp.pain30pct)+'</div></div>'+
+    '<div class="card"><div class="ctitle">近30天 訓練負荷總量</div><div class="cval">'+cmp.w30.loadTotal+arrowHtml(cmp.load30pct)+'</div></div>';
+
+  var rules = computeRules(state.records, state.todayStr);
+  var rw = document.getElementById('ruleMsgs');
+  if(!rules.length){
+    rw.innerHTML = '<div class="no-rule">今日無特別規則觸發（資料不足或狀態穩定）</div>';
+  } else {
+    rw.innerHTML = rules.map(function(m){
+      return '<div class="rule-msg '+m.level+'"><span class="rtag">規則 '+m.rule+'</span>'+m.text+'</div>';
+    }).join('');
+  }
+}
+
+function renderGauge(){
+  var g = computeGauge(state.records, state.todayStr);
+  var wrap = document.getElementById('gaugeCells');
+  wrap.innerHTML =
+    '<div class="gcell"><div class="glabel">晨僵歸零連續天數</div><div class="gval">'+g.stiffZeroStreak+'/'+g.stiffZeroTarget+'</div></div>'+
+    '<div class="gcell"><div class="glabel">壓痛(max)&lt;2 連續天數</div><div class="gval">'+g.painLowStreak+'/'+g.painLowTarget+'</div></div>'+
+    '<div class="gcell"><div class="glabel">超音波基準</div><div class="gval">'+g.ultrasound+'</div></div>';
+}
+
+function renderCharts(){
+  document.getElementById('chartStiff').innerHTML = renderStiffChart(state.records);
+  document.getElementById('chartPain').innerHTML = renderPainChart(state.records);
+  document.getElementById('chartLoad').innerHTML = renderLoadChart(state.records);
+  document.getElementById('chartHeat').innerHTML = renderHeatChart(state.records);
+}
+
+function fetchAll(){
+  if(state.mockMode){
+    return Promise.resolve(state.records);
+  }
+  return fetch(API_URL, {method:'GET'})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(j){ if(!j.ok) throw new Error(j.error||'unknown error'); return j.records; });
+}
+
+function postRecord(rec){
+  if(state.mockMode){
+    state.records = upsertLocal(state.records, rec);
+    return Promise.resolve();
+  }
+  // 用 text/plain 避免觸發 CORS 預檢請求（Apps Script Web App 對 OPTIONS 支援不佳的已知workaround）
+  return fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(rec)
+  })
+  .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(function(j){ if(!j.ok) throw new Error(j.error||'unknown error'); state.records = upsertLocal(state.records, rec); });
+}
+
+function doSave(){
+  var rec = Object.assign({date: state.selectedDate}, state.form, {ts: new Date().toISOString()});
+  var status = document.getElementById('saveStatus');
+  var retryBtn = document.getElementById('retryBtn');
+  document.getElementById('saveBtn').disabled = true;
+  status.textContent = '儲存中…'; status.className='';
+  retryBtn.style.display='none';
+  postRecord(rec).then(function(){
+    status.textContent = '✅ 已儲存'; status.className='ok';
+    updateSaveState();
+    populateDateSelect();
+    renderAnalysis();
+    renderGauge();
+    renderCharts();
+  }).catch(function(err){
+    status.textContent = '❌ 儲存失敗：'+err.message; status.className='err';
+    retryBtn.style.display='inline-block';
+    updateSaveState();
+  });
+}
+
+function init(){
+  initTestMode();
+  document.getElementById('saveBtn').addEventListener('click', doSave);
+  document.getElementById('retryBtn').addEventListener('click', doSave);
+  fetchAll().then(function(records){
+    if(!state.mockMode) state.records = records;
+    loadDate(state.todayStr);
+  }).catch(function(err){
+    document.getElementById('bigDate').textContent = state.todayStr || getRealTodayStr();
+    var status = document.getElementById('saveStatus');
+    status.textContent = '❌ 讀取失敗：'+err.message; status.className='err';
+    document.getElementById('retryBtn').style.display='inline-block';
+    document.getElementById('retryBtn').onclick = function(){ location.reload(); };
+    state.records = [];
+    state.selectedDate = state.todayStr || getRealTodayStr();
+    document.getElementById('bigDate').textContent = state.selectedDate;
+    renderFields(); populateDateSelect(); renderAnalysis(); renderGauge(); renderCharts();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
