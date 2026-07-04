@@ -135,7 +135,7 @@
 /* ============================================================
  * API_URL — 部署完 Apps Script 後，把下面網址換成你的 Web App URL
  * ============================================================ */
-const API_URL = "PLACEHOLDER_REPLACE_WITH_YOUR_WEBAPP_URL"; // <-- 貼上 https://script.google.com/macros/s/xxxx/exec
+const API_URL = "https://script.google.com/macros/s/AKfycbz1beY3x4XeQH865_19fMeymShu-xCdfeI4QSy57u2gF_MfjmnZitz1XGUEULjWGRJc/exec";
 
 /* ============================================================
  * 內建歷史種子資料（同時也用於離線測試模式 ?mock=1）
@@ -402,28 +402,28 @@ function buildLineSegments(records,key){
 /* ============================================================
  * SVG 圖表建構（字串產生，不依賴外部函式庫）
  * ============================================================ */
-var CHART_W = 340, CHART_H = 170;
-var PAD_L = 34, PAD_R = 10, PAD_T = 14, PAD_B = 22;
+var CHART_W = 340, CHART_H = 186;
+var PAD_L = 36, PAD_R = 12, PAD_T = 28, PAD_B = 24;
 
 function svgEsc(s){ return String(s); }
 
 function axisSkeleton(yMax, yLabel, xScale, yTicks){
   var innerW = CHART_W-PAD_L-PAD_R, innerH = CHART_H-PAD_T-PAD_B;
   var parts = [];
+  // y axis unit label：獨立放在圖表最上方一整排的空間裡，不會跟格線數字疊在一起
+  parts.push('<text x="'+PAD_L+'" y="12" font-size="10" font-weight="700" fill="#c8f04a" text-anchor="start">'+svgEsc(yLabel)+'</text>');
   // gridlines + y labels
   yTicks.forEach(function(t){
     var y = PAD_T + innerH - (t/yMax)*innerH;
     parts.push('<line x1="'+PAD_L+'" y1="'+y+'" x2="'+(CHART_W-PAD_R)+'" y2="'+y+'" stroke="#262d3a" stroke-width="1"/>');
-    parts.push('<text x="'+(PAD_L-6)+'" y="'+(y+3)+'" font-size="9" fill="#8b93a3" text-anchor="end">'+t+'</text>');
+    parts.push('<text x="'+(PAD_L-8)+'" y="'+(y+3.5)+'" font-size="10" fill="#8b93a3" text-anchor="end">'+t+'</text>');
   });
-  // y axis unit label (rotated)
-  parts.push('<text x="10" y="'+(PAD_T+8)+'" font-size="9" fill="#c8f04a" text-anchor="start">'+svgEsc(yLabel)+'</text>');
   // x axis line
   parts.push('<line x1="'+PAD_L+'" y1="'+(CHART_H-PAD_B)+'" x2="'+(CHART_W-PAD_R)+'" y2="'+(CHART_H-PAD_B)+'" stroke="#262d3a" stroke-width="1"/>');
-  // x labels: min and max date, plus a mid tick
+  // x labels: min and max date
   if(xScale.minStr){
-    parts.push('<text x="'+PAD_L+'" y="'+(CHART_H-6)+'" font-size="9" fill="#8b93a3" text-anchor="start">'+xScale.minStr.slice(5)+'</text>');
-    parts.push('<text x="'+(CHART_W-PAD_R)+'" y="'+(CHART_H-6)+'" font-size="9" fill="#8b93a3" text-anchor="end">'+xScale.maxStr.slice(5)+'</text>');
+    parts.push('<text x="'+PAD_L+'" y="'+(CHART_H-7)+'" font-size="10" fill="#8b93a3" text-anchor="start">'+xScale.minStr.slice(5)+'</text>');
+    parts.push('<text x="'+(CHART_W-PAD_R)+'" y="'+(CHART_H-7)+'" font-size="10" fill="#8b93a3" text-anchor="end">'+xScale.maxStr.slice(5)+'</text>');
   }
   return parts.join('');
 }
@@ -447,7 +447,7 @@ function polylineFromSegments(records, key, xScale, yMax, color, dotRadius){
 
 function renderStiffChart(records){
   var xScale = buildXScale(records, CHART_W, PAD_L, PAD_R);
-  var svg = '<svg viewBox="0 0 '+CHART_W+' '+CHART_H+'" xmlns="http://www.w3.org/2000/svg">';
+  var svg = '<svg viewBox="0 0 '+CHART_W+' '+CHART_H+'" width="'+CHART_W+'" height="'+CHART_H+'" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
   svg += axisSkeleton(3, '等級(0-3)', xScale, [0,1,2,3]);
   svg += polylineFromSegments(records, 'stiff', xScale, 3, '#c8f04a', 2.6);
   svg += '</svg>';
@@ -455,7 +455,7 @@ function renderStiffChart(records){
 }
 function renderPainChart(records){
   var xScale = buildXScale(records, CHART_W, PAD_L, PAD_R);
-  var svg = '<svg viewBox="0 0 '+CHART_W+' '+CHART_H+'" xmlns="http://www.w3.org/2000/svg">';
+  var svg = '<svg viewBox="0 0 '+CHART_W+' '+CHART_H+'" width="'+CHART_W+'" height="'+CHART_H+'" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
   svg += axisSkeleton(3, '壓痛等級(0-3)', xScale, [0,0.5,1,2,3]);
   svg += polylineFromSegments(records, 'painL', xScale, 3, '#4ea1ff', 2.6);
   svg += polylineFromSegments(records, 'painR', xScale, 3, '#3ddc84', 2.2);
@@ -466,7 +466,7 @@ function renderLoadChart(records){
   var xScale = buildXScale(records, CHART_W, PAD_L, PAD_R);
   var innerH = CHART_H-PAD_T-PAD_B, yMax=3;
   function yOf(v){ return PAD_T + innerH - (v/yMax)*innerH; }
-  var svg = '<svg viewBox="0 0 '+CHART_W+' '+CHART_H+'" xmlns="http://www.w3.org/2000/svg">';
+  var svg = '<svg viewBox="0 0 '+CHART_W+' '+CHART_H+'" width="'+CHART_W+'" height="'+CHART_H+'" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
   svg += axisSkeleton(3, '負荷等級(0-3)', xScale, [0,1,2,3]);
   var sorted = records.slice().sort(function(a,b){return a.date<b.date?-1:1;});
   var barW = 5;
@@ -492,7 +492,7 @@ function renderHeatChart(records){
   var xScale = buildXScale(records, CHART_W, PAD_L, PAD_R);
   var innerH = CHART_H-PAD_T-PAD_B, yMax=2;
   function yOf(v){ return PAD_T + innerH - (v/yMax)*innerH; }
-  var svg = '<svg viewBox="0 0 '+CHART_W+' '+CHART_H+'" xmlns="http://www.w3.org/2000/svg">';
+  var svg = '<svg viewBox="0 0 '+CHART_W+' '+CHART_H+'" width="'+CHART_W+'" height="'+CHART_H+'" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
   svg += axisSkeleton(2, '熱感(0-2)', xScale, [0,1,2]);
   records.forEach(function(r){
     if(r.heat===undefined||r.heat===null) return;
@@ -675,7 +675,7 @@ function renderCharts(){
 /*
  * Google Apps Script 網頁應用程式不會回傳 CORS 標頭，跨網域（GitHub Pages）用
  * fetch() 讀取一律會被瀏覽器擋下（TypeError: Failed to fetch），即使伺服器端其實
- * 執行成功。GET 改用 JSONP（<script> 標籤讀取，不受 CORS 限制，需搭配 apps_script.gs
+ * 執行成功。GET 改用 JSONP（動態插入 script 標籤讀取，不受 CORS 限制，需搭配 apps_script.gs
  * 裡 doGet 的 ?callback= 支援）；POST 改用 mode:'no-cors' 走一次性寫入，
  * 換取不受 CORS 阻擋，代價是無法讀取伺服器回應內容（見下方函式內註解）。
  */
