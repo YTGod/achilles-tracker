@@ -135,7 +135,7 @@
 /* ============================================================
  * API_URL — 部署完 Apps Script 後，把下面網址換成你的 Web App URL
  * ============================================================ */
-const API_URL = "https://script.google.com/macros/s/AKfycbz1beY3x4XeQH865_19fMeymShu-xCdfeI4QSy57u2gF_MfjmnZitz1XGUEULjWGRJc/exec"; // <-- 貼上 https://script.google.com/macros/s/xxxx/exec
+const API_URL = "PLACEHOLDER_REPLACE_WITH_YOUR_WEBAPP_URL"; // <-- 貼上 https://script.google.com/macros/s/xxxx/exec
 
 /* ============================================================
  * 內建歷史種子資料（同時也用於離線測試模式 ?mock=1）
@@ -396,7 +396,6 @@ function buildLineSegments(records,key){
 }
 /* ============================================================
  * PURE-END
- 
  * ============================================================ */
 </script>
 <script>
@@ -673,12 +672,52 @@ function renderCharts(){
   document.getElementById('chartHeat').innerHTML = renderHeatChart(state.records);
 }
 
+/*
+ * Google Apps Script 網頁應用程式不會回傳 CORS 標頭，跨網域（GitHub Pages）用
+ * fetch() 讀取一律會被瀏覽器擋下（TypeError: Failed to fetch），即使伺服器端其實
+ * 執行成功。GET 改用 JSONP（<script> 標籤讀取，不受 CORS 限制，需搭配 apps_script.gs
+ * 裡 doGet 的 ?callback= 支援）；POST 改用 mode:'no-cors' 走一次性寫入，
+ * 換取不受 CORS 阻擋，代價是無法讀取伺服器回應內容（見下方函式內註解）。
+ */
+function jsonpFetch(url, timeoutMs){
+  return new Promise(function(resolve, reject){
+    var cbName = '__jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random()*1e6);
+    var script = document.createElement('script');
+    var done = false;
+    function cleanup(){
+      delete window[cbName];
+      if(script.parentNode) script.parentNode.removeChild(script);
+      clearTimeout(timer);
+    }
+    window[cbName] = function(data){
+      if(done) return;
+      done = true;
+      cleanup();
+      resolve(data);
+    };
+    script.onerror = function(){
+      if(done) return;
+      done = true;
+      cleanup();
+      reject(new Error('JSONP 載入失敗（網路或網址錯誤）'));
+    };
+    var timer = setTimeout(function(){
+      if(done) return;
+      done = true;
+      cleanup();
+      reject(new Error('JSONP 逾時，請確認 API_URL 是否正確、Apps Script 是否已部署'));
+    }, timeoutMs || 15000);
+    var sep = url.indexOf('?') >= 0 ? '&' : '?';
+    script.src = url + sep + 'callback=' + cbName + '&_=' + Date.now();
+    document.head.appendChild(script);
+  });
+}
+
 function fetchAll(){
   if(state.mockMode){
     return Promise.resolve(state.records);
   }
-  return fetch(API_URL, {method:'GET'})
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  return jsonpFetch(API_URL)
     .then(function(j){ if(!j.ok) throw new Error(j.error||'unknown error'); return j.records; });
 }
 
@@ -687,14 +726,17 @@ function postRecord(rec){
     state.records = upsertLocal(state.records, rec);
     return Promise.resolve();
   }
-  // 用 text/plain 避免觸發 CORS 預檢請求（Apps Script Web App 對 OPTIONS 支援不佳的已知workaround）
+  // mode:'no-cors'：請求仍會送達 Apps Script 並實際寫入試算表，但因為跨網域缺少
+  // CORS 標頭，瀏覽器不允許讀取回應內容（response 會是 opaque），所以這裡只能用
+  // 「fetch 有沒有丟出例外」來判斷網路層級是否送達，無法讀到後端回傳的 ok/error。
   return fetch(API_URL, {
     method:'POST',
+    mode:'no-cors',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
     body: JSON.stringify(rec)
-  })
-  .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(function(j){ if(!j.ok) throw new Error(j.error||'unknown error'); state.records = upsertLocal(state.records, rec); });
+  }).then(function(){
+    state.records = upsertLocal(state.records, rec);
+  });
 }
 
 function doSave(){
