@@ -735,6 +735,24 @@ function jsonpFetch(url, timeoutMs){
   });
 }
 
+/* ============================================================
+ * 本機快取（localStorage）：先顯示上次抓到的資料，不必每次都等
+ * Apps Script 來回一趟才看得到畫面；背景抓到最新資料後再靜默更新。
+ * ============================================================ */
+var LOCAL_CACHE_KEY = 'achillesLog_cache_v1';
+function loadLocalCache(){
+  try{
+    var raw = localStorage.getItem(LOCAL_CACHE_KEY);
+    if(!raw) return null;
+    var parsed = JSON.parse(raw);
+    if(Array.isArray(parsed)) return parsed;
+  }catch(e){}
+  return null;
+}
+function saveLocalCache(records){
+  try{ localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(records)); }catch(e){}
+}
+
 function fetchAll(){
   if(state.mockMode){
     return Promise.resolve(state.records);
@@ -745,7 +763,6 @@ function fetchAll(){
 
 function postRecord(rec){
   if(state.mockMode){
-    state.records = upsertLocal(state.records, rec);
     return Promise.resolve();
   }
   // mode:'no-cors'：請求仍會送達 Apps Script 並實際寫入試算表，但因為跨網域缺少
@@ -756,8 +773,6 @@ function postRecord(rec){
     mode:'no-cors',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
     body: JSON.stringify(rec)
-  }).then(function(){
-    state.records = upsertLocal(state.records, rec);
   });
 }
 
@@ -765,20 +780,21 @@ function doSave(){
   var rec = Object.assign({date: state.selectedDate}, state.form, {ts: new Date().toISOString()});
   var status = document.getElementById('saveStatus');
   var retryBtn = document.getElementById('retryBtn');
-  document.getElementById('saveBtn').disabled = true;
-  status.textContent = '儲存中…'; status.className='';
   retryBtn.style.display='none';
-  postRecord(rec).then(function(){
-    status.textContent = '✅ 已儲存'; status.className='ok';
-    updateSaveState();
-    populateDateSelect();
-    renderAnalysis();
-    renderGauge();
-    renderCharts();
-  }).catch(function(err){
-    status.textContent = '❌ 儲存失敗：'+err.message; status.className='err';
+  // 樂觀更新：no-cors 模式本來就無法讀取伺服器回應內容，等待網路來回只會讓使用者
+  // 白白多等，所以先在本機套用變更並立即顯示「已儲存」，網路請求在背景送出即可；
+  // 真的送失敗時才另外提示（此時本機資料已經是對的，只是雲端還沒同步到）。
+  state.records = upsertLocal(state.records, rec);
+  saveLocalCache(state.records);
+  status.textContent = '✅ 已儲存'; status.className='ok';
+  updateSaveState();
+  populateDateSelect();
+  renderAnalysis();
+  renderGauge();
+  renderCharts();
+  postRecord(rec).catch(function(err){
+    status.textContent = '⚠️ 已存本機，但同步雲端失敗：'+err.message; status.className='err';
     retryBtn.style.display='inline-block';
-    updateSaveState();
   });
 }
 
@@ -786,10 +802,36 @@ function init(){
   initTestMode();
   document.getElementById('saveBtn').addEventListener('click', doSave);
   document.getElementById('retryBtn').addEventListener('click', doSave);
+
+  var hasCache = false;
+  if(!state.mockMode){
+    var cached = loadLocalCache();
+    if(cached && cached.length){
+      hasCache = true;
+      state.records = cached;
+      loadDate(state.todayStr);
+      document.getElementById('saveStatus').textContent = '同步中…';
+    } else {
+      document.getElementById('fields').innerHTML = '<div class="no-rule">載入中…</div>';
+    }
+  }
+
   fetchAll().then(function(records){
-    if(!state.mockMode) state.records = records;
+    if(!state.mockMode){
+      state.records = records;
+      saveLocalCache(records);
+    }
     loadDate(state.todayStr);
   }).catch(function(err){
+    if(hasCache){
+      // 已經用本機快取顯示過畫面，背景更新失敗不需要整個清空，只顯示小提示即可。
+      var status = document.getElementById('saveStatus');
+      status.textContent = '⚠️ 背景更新失敗（顯示為本機快取）：'+err.message; status.className='err';
+      var retryBtn = document.getElementById('retryBtn');
+      retryBtn.style.display='inline-block';
+      retryBtn.onclick = function(){ location.reload(); };
+      return;
+    }
     document.getElementById('bigDate').textContent = state.todayStr || getRealTodayStr();
     var status = document.getElementById('saveStatus');
     status.textContent = '❌ 讀取失敗：'+err.message; status.className='err';
